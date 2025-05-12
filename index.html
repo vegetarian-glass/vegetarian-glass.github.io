@@ -27,8 +27,7 @@
 </nav>
 
 <div class="container my-5">
-  <div id="content"></div>
-  <div id="gallery" class="row g-4 mt-4"></div>
+  <div id="gallery" class="masonry-gallery"></div>
 </div>
 
 <footer class="bg-light text-center text-muted py-4 mt-5 border-top fixed-bottom">
@@ -37,90 +36,57 @@
   </div>
 </footer>
 
-<!-- Marked.js CDN -->
-<script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
 <!-- Bootstrap JS Bundle CDN -->
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+<!-- lightGallery CSS -->
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/lightgallery@2.7.2/css/lightgallery-bundle.min.css" />
+<script src="https://cdn.jsdelivr.net/npm/lightgallery@2.7.2/lightgallery.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/lightgallery@2.7.2/plugins/zoom/lg-zoom.min.js"></script>
 
+<!-- Masonry CSS (optional, for spacing) -->
+<style>
+  .masonry-gallery { display: flex; flex-wrap: wrap; margin: -8px; }
+  .masonry-item { margin: 8px; background: #fff8e1; border-radius: 8px; box-shadow: 0 2px 8px #0001; overflow: hidden; }
+  .masonry-item img { display: block; width: 100%; height: auto; border-radius: 8px; }
+</style>
+
+<!-- Masonry JS CDN -->
+<script src="https://unpkg.com/masonry-layout@4/dist/masonry.pkgd.min.js"></script>
 <script>
-const contentIssue = 1;
-const galleryIssue = 1;
-const repo = "vegetarian-glass/vegetarian-glass.github.io";
+const imageFiles = [
+  "beetle.png", "bird-1.png", "bird-2.png", "bird-3.png", "candy-corn.png",
+  "desert.png", "evil-eye.png", "flower.png", "gnome.png", "green-slug.png",
+  "green-slugs.png", "heart-1.png", "heart-2.png", "hummer.png", "joshua.png",
+  "mountain.png", "owl.png", "peace.png", "seagull.png", "shroom.png", "snail.png",
+  "squatch-n-woods.png", "stakes-birds-hearts.png", "stakes-hearts.png",
+  "stakes-plants-spaceships.png", "stakes-slugs.png", "sun-n-ocean.png",
+  "trading-cards.png"
+];
 
-function extractGalleryList(text) {
-    const match = text.match(/<!-- GALLERY START -->([\s\S]*?)<!-- GALLERY END -->/);
-    if (!match) return [];
-    return match[1].split("\n").map(l => l.trim())
-        .filter(line => line.startsWith("-"))
-        .map(line => parseInt(line.replace("-", "").trim()))
-        .filter(num => !isNaN(num));
-}
+const galleryDiv = document.getElementById('gallery');
+galleryDiv.innerHTML = imageFiles.map(f =>
+  `<div class="masonry-item" style="width: 220px;">
+    <a href="images/${f}">
+      <img src="images/${f}" alt="${f}">
+    </a>
+  </div>`
+).join('');
 
-function extractFirstImage(markdown) {
-    const match = markdown.match(/!\[.*?\]\((.*?)\)/);
-    return match ? match[1] : "https://via.placeholder.com/300x200?text=No+Image";
-}
-
-function removeFirstImageFromMarkdown(markdown) {
-    return markdown.replace(/!\[.*?\]\((.*?)\)/, '').trim();
-}
-
-function extractBuyNowLink(markdown) {
-    const match = markdown.match(/\[Buy Now\]\((.*?)\)/i);
-    return match ? match[1] : null;
-}
-
-function removeBuyNowLink(markdown) {
-    return markdown.replace(/\[Buy Now\]\((.*?)\)/i, '').trim();
-}
-
-function renderGallery(issueNumbers) {
-    Promise.all(issueNumbers.map(id =>
-        fetch(`https://api.github.com/repos/${repo}/issues/${id}`).then(res => res.json())
-    )).then(items => {
-        const galleryDiv = document.getElementById("gallery");
-        if (!galleryDiv) return;
-        galleryDiv.innerHTML = "";
-        items.forEach(item => {
-            const imageUrl = extractFirstImage(item.body);
-            let markdownWithoutImage = removeFirstImageFromMarkdown(item.body);
-            const buyNowLink = extractBuyNowLink(markdownWithoutImage);
-            markdownWithoutImage = removeBuyNowLink(markdownWithoutImage);
-            const col = document.createElement("div");
-            col.className = "col-md-4";
-            col.innerHTML = `
-                <div class="card h-100 shadow-sm">
-                    <img src="${imageUrl}" class="card-img-top object-fit-cover" style="height:400px;" alt="${item.title}">
-                    <div class="card-body d-flex flex-column">
-                        <h5 class="card-title">${item.title}</h5>
-                        <div class="card-text mb-3">${marked.parse(markdownWithoutImage)}</div>
-                        ${buyNowLink ? `<a href="${buyNowLink}" class="btn btn-success mt-auto w-100" target="_blank">Buy Now</a>` : ""}
-                    </div>
-                </div>`;
-            galleryDiv.appendChild(col);
-        });
-    });
-}
-
-function renderContent(markdown) {
-    const contentDiv = document.getElementById("content");
-    if (!contentDiv) return;
-    // Only show content before the gallery list and before any '...'
-    let contentOnly = markdown;
-    const galleryStart = contentOnly.indexOf('gallery:');
-    if (galleryStart !== -1) contentOnly = contentOnly.substring(0, galleryStart).trim();
-    const dotsIndex = contentOnly.indexOf('...');
-    if (dotsIndex !== -1) contentOnly = contentOnly.substring(0, dotsIndex).trim();
-    contentDiv.innerHTML = marked.parse(contentOnly);
-}
-
-fetch(`https://api.github.com/repos/${repo}/issues/${contentIssue}`)
-    .then(res => res.json())
-    .then(data => {
-        renderContent(data.body);
-        const galleryIDs = extractGalleryList(data.body);
-        renderGallery(galleryIDs);
-    });
+// Wait for images to load before initializing Masonry
+window.addEventListener('load', function() {
+  new Masonry(galleryDiv, {
+    itemSelector: '.masonry-item',
+    columnWidth: 220,
+    gutter: 16,
+    fitWidth: true
+  });
+  lightGallery(galleryDiv, {
+    selector: 'a',
+    plugins: [lgZoom],
+    speed: 400,
+    download: false
+  });
+});
 </script>
 
 <style>
